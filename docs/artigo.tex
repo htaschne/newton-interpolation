@@ -1,0 +1,230 @@
+\documentclass[12pt,brazil,a4paper, twocolumn]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm}
+\RequirePackage{times}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{float}
+\usepackage{algpseudocode}
+\usepackage[hidelinks]{hyperref}
+\usepackage{babel}
+
+\begin{document}
+
+\title{Interpolação de Newton -- Estimativa da altura máxima de um projétil}
+
+\author{Agatha Schneider\\
+Métodos Numéricos}
+
+\date{\today}
+\maketitle
+
+\begin{abstract}
+Este artigo tem como objetivo apresentar a resolução de um problema de interpolação numérica. O problema consiste em estimar a altura máxima atingida por um projétil a partir de uma tabela com alguns valores de tempo e altura. Para isso, foi utilizado o método de interpolação de Newton por diferenças divididas.
+
+Além da resolução implementada, também foi feita uma segunda estimativa utilizando o ChatGPT. A ferramenta recebeu a mesma tabela de dados e foi solicitado que estimasse o tempo e a altura máxima do projétil. Ao final, os resultados foram comparados e discutidos.
+\end{abstract}
+
+\section{Definição do problema}
+
+O problema proposto apresenta a trajetória de um projétil lançado por um obuseiro leve L117. Porém, ao invés de fornecer uma função explícita da altura em função do tempo, o enunciado fornece apenas alguns pontos conhecidos da trajetória. Os dados são os seguintes:
+
+\begin{center}
+\begin{tabular}{c|c}
+Tempo (s) & Altura (m)\\
+\hline
+0 & 1,5\\
+3 & 1007\\
+7 & 2075\\
+10 & 2670\\
+14 & 3190\\
+29 & 2339\\
+31 & 1892\\
+\end{tabular}
+\end{center}
+
+Como temos apenas valores discretos, precisamos construir uma função aproximada que represente a trajetória dentro do intervalo observado. Para isso, foi escolhido o método de interpolação de Newton, que constrói um polinômio que passa exatamente pelos pontos fornecidos.
+
+A partir deste polinômio, o objetivo passa a ser encontrar o instante em que a altura é máxima. Isto pode ser feito procurando o ponto em que a derivada do polinômio é igual a zero.
+
+\section{Método de interpolação}
+
+A interpolação de Newton escreve o polinômio na forma:
+\[
+\begin{aligned}
+P(x) ={}& b_0
++ b_1(x-x_0)
++ b_2(x-x_0)(x-x_1)\\
+&+ \cdots
++ b_n(x-x_0)\cdots(x-x_{n-1}).
+\end{aligned}
+\]
+
+\noindent
+Os valores $b_0, b_1, \ldots, b_n$ são os coeficientes do polinômio. Eles são obtidos a partir da tabela de diferenças divididas. A primeira coluna da tabela contém os valores originais de altura.
+
+As demais colunas são calculadas usando a seguinte relação:
+
+\vspace{0.3cm}
+\[
+\begin{aligned}
+f[x_i,\ldots,x_{i+j}]
+={}&
+\frac{
+ f[x_{i+1},\ldots,x_{i+j}]
+ -
+ f[x_i,\ldots,x_{i+j-1}]
+}{x_{i+j}-x_i}
+\end{aligned}
+\]
+
+\vspace{0.2cm}
+
+Dessa forma, cada coluna depende da coluna anterior, até que se obtenha toda a tabela. Os coeficientes usados no polinômio são os valores da primeira linha desta tabela.
+
+Para os pontos fornecidos, foram encontrados aproximadamente os seguintes coeficientes:
+
+\begin{center}
+\begin{tabular}{c|r@{$\,\times\,$}l}
+Coeficiente & \multicolumn{2}{c}{Valor}\\
+\hline
+$b_0$ & 1.50 & $10^{0}$\\
+$b_1$ & 3.35 & $10^{2}$\\
+$b_2$ & -9.74 & $10^{0}$\\
+$b_3$ & -7.14 & $10^{-3}$\\
+$b_4$ & 8.19 & $10^{-4}$\\
+$b_5$ & -3.80 & $10^{-5}$\\
+$b_6$ & 1.74 & $10^{-6}$\\
+\end{tabular}
+\end{center}
+
+
+\begin{center}
+{\small\textit{Nota: Os coeficientes foram arredondados para facilitar a leitura.}}
+\end{center}
+
+Com estes coeficientes, obtemos um polinômio de grau seis. Este grau aparece naturalmente porque foram usados sete pontos. O polinômio não é escrito expandido no relatório porque sua forma expandida não ajuda muito na compreensão do método. A forma de Newton já mostra melhor como os coeficientes foram obtidos e como o polinômio é avaliado.
+
+\section{Implementação}
+
+A implementação foi feita em Python. Primeiro, os pontos foram lidos a partir de um arquivo contendo pares de tempo e altura. Depois, foi construída a tabela de diferenças divididas.
+
+A ideia principal do algoritmo é construir a tabela coluna por coluna. A primeira coluna recebe as alturas originais, enquanto as colunas seguintes são calculadas a partir das diferenças divididas da coluna anterior. A construção da tabela de diferenças divididas é apresentada no \autoref{alg:diferencas-divididas}.
+
+\begin{figure*}[t]
+\centering
+\begin{minipage}{0.75\textwidth}
+\begin{algorithm}[H]
+\caption{Construção da tabela de diferenças divididas}
+\label{alg:diferencas-divididas}
+\begin{algorithmic}[]
+\State $n \gets \text{tamanho}(pontos)$
+\For{$i \gets 0$ até $n-1$}
+    \State $tabela[i][0] \gets pontos[i].altura$
+\EndFor
+\For{$j \gets 1$ até $n-1$}
+    \For{$i \gets 0$ até $n-j-1$}
+        \State $num \gets tabela[i+1][j-1]-tabela[i][j-1]$
+        \State $den \gets pontos[i+j].tempo-pontos[i].tempo$
+        \State $tabela[i][j] \gets num/den$
+    \EndFor
+\EndFor
+\State \Return $tabela$
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\end{figure*}
+
+Após a criação da tabela, os coeficientes foram extraídos da primeira linha. Em seguida foi criada uma função para avaliar o polinômio em qualquer instante $t$.
+
+Um teste importante foi verificar se o polinômio realmente passava pelos pontos originais. Ou seja, para cada tempo da tabela, avaliou-se o polinômio e comparou-se o valor obtido com a altura original. Esta verificação é simples, mas ajuda bastante, pois uma tabela de diferenças divididas incorreta ainda poderia produzir um número final, mas esse número não teria significado.
+
+\section{Estimativa da altura máxima}
+
+Depois de construir o polinômio de aproximação $P(t)$, resta estimar a altura máxima do projétil. Como $P(t)$ aproxima a função altura, passaremos a escrever $h(t)$ para simplificar a notação. Como queremos encontrar um máximo, procuramos um ponto em que:
+\[
+h'(t)=0.
+\]
+
+Foi utilizado o método de Newton para encontrar uma raiz da derivada da função altura.
+
+O método de Newton aproxima da raiz em passos na forma:
+\[
+x_{n+1}=x_n-\frac{f(x_n)}{f'(x_n)}.
+\]
+
+Neste problema, a fórmula geral é aplicada sobre a variável de tempo. A função cujas raízes desejamos encontrar é a derivada da altura. Portanto,
+\[
+f(t)=\frac{dh}{dt}
+\]
+
+ e sua derivada é
+\[
+f'(t)=\frac{d^2h}{dt^2}.
+\]
+
+Substituindo essas expressões na fórmula de Newton, obtemos:
+\[
+t_{n+1}=t_n-\frac{\frac{dh}{dt}(t_n)}{\frac{d^2h}{dt^2}(t_n)}.
+\]
+
+Na implementação, as derivadas foram aproximadas numericamente. Com um chute inicial próximo da região onde a altura parecia ser máxima ($t=14s$), o método convergiu para:
+\[
+t \approx 18,652473 \text{ s}.
+\]
+
+Avaliando $h(t)$ nesse instante, obteve-se:
+\[
+h(18,652473) \approx 3402,236046 \text{ m}.
+\]
+
+Portanto, a altura máxima estimada foi de aproximadamente $3402,24$ metros, atingida cerca de $18,65$ segundos após o disparo.
+
+\section{Uso do ChatGPT}
+
+Para a segunda parte do trabalho, foi feita uma consulta ao ChatGPT. A entrada fornecida foi a mesma tabela de tempo e altura apresentada na Seção~1.
+
+Foi solicitado que a ferramenta estimasse em qual instante o projétil atingiria sua altura máxima e qual seria essa altura. A resposta obtida também usou interpolação para modelar a trajetória e procurou o máximo da função interpoladora.
+
+O resultado retornado foi compatível com o resultado da implementação:
+
+\begin{center}
+\begin{tabular}{c|c}
+Grandeza & Valor estimado\\
+\hline
+Tempo da altura máxima & $18,652473$ s\\
+Altura máxima & $3402,236046$ m\\
+\end{tabular}
+\end{center}
+
+\section{Comparação dos resultados}
+
+A implementação própria e a consulta ao ChatGPT chegaram ao mesmo resultado numérico. A tabela abaixo resume a comparação:
+
+\begin{center}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{l|c|c}
+Grandeza & Implementação & ChatGPT\\
+\hline
+Tempo máx. & $18,652473$ s & $18,652473$ s\\
+Altura máx. & $3402,236046$ m & $3402,236046$ m\\
+\end{tabular}%
+}
+\end{center}
+
+Como os valores coincidiram, considera-se que o resultado obtido é consistente com o método usado. Além disso, o fato de o polinômio reproduzir os pontos originais reforça que a interpolação foi implementada corretamente.
+
+Mesmo assim, é importante observar que o resultado depende diretamente da qualidade dos dados e do modelo escolhido. O polinômio passa pelos pontos fornecidos, mas isso não significa necessariamente que ele represente perfeitamente a trajetória física real do projétil. Ele é uma aproximação construída a partir dos dados disponíveis.
+
+\section{Conclusão}
+
+Neste trabalho foi utilizada a interpolação de Newton para estimar a altura máxima de um projétil a partir de valores conhecidos de tempo e altura. A tabela de diferenças divididas permitiu obter os coeficientes do polinômio, e a altura máxima foi estimada procurando o ponto em que a derivada do polinômio é $0$.
+
+O resultado encontrado foi uma altura máxima de aproximadamente $3402,24$ metros no instante $18,65$ segundos. O mesmo resultado foi obtido através da consulta ao ChatGPT, quando a ferramenta recebeu a tabela de dados e a solicitação de estimar a altura máxima e o tempo correspondente.
+
+
+\end{document}
